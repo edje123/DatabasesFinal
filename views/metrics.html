@@ -41,104 +41,6 @@
 <script>
 	var socket = io();
 
-    var returned = [];
-
-    function portData(){
-      var person = $("#person-id-search").val();
-      var name = $("#person-name-search").val();
-      var isAdmin = $("#isAdmin-search option:selected").val();
-      var infection = $("#infection-search option:selected").val();
-
-      $("#person-id-update").val($("#person-id-search").val())
-      $("#person-name").val($("#person-name-search").val())
-      $("#isAdmin").val($("#isAdmin-search option:selected").val())
-      $("#infection").val($("#infection-search option:selected").val())
-    }
-
-    function testEmit() {
-        console.log("testEmit")
-        socket.emit('testEmit', 'testEmit');
-    }
-
-    function sendEvent() {
-        var person = $("#person-id").val();
-        var building = $("#building").val();
-        var place = $("#place").val();
-
-        var type = $("#checkinout option:selected").val();
-
-        console.log({
-            id: person,
-            place: place,
-            building: building,
-            type: type
-        })
-
-        socket.emit("event", {
-            id: person,
-            place: place,
-            building: building,
-            type: type
-        })
-    }
-
-    function updateUser() {
-        var person = $("#person-id-update").val();
-        var name = $("#person-name").val();
-        var isAdmin = $("#isAdmin option:selected").val();
-        var infection = $("#infection option:selected").val();
-
-
-        console.log({
-            id: person,
-            name: name,
-            isAdmin: isAdmin,
-            infectionStatus: infection
-        })
-
-        if(name == "" && isAdmin == "-1" && infection == "-1"){
-          alert("You did not change any information.")
-        }
-        else{
-          socket.emit("userUpdate", {
-            id: person,
-            name: name,
-            isAdmin: isAdmin,
-            infectionStatus: infection
-          })
-        }
-        
-    }
-
-    function searchUsers(){
-      var person = $("#person-id-search").val();
-      var name = $("#person-name-search").val();
-      var isAdmin = $("#isAdmin-search option:selected").val();
-      var infection = $("#infection-search option:selected").val();
-
-      var messageBuilder = {};
-
-      if(isAdmin != -1){
-        messageBuilder.isAdmin = isAdmin;
-      }
-      
-      if(infection != -1){
-        messageBuilder.infectionStatus = infection;
-      }
-
-      if(name != "" && name != " "){
-        messageBuilder.name = name;
-      }
-
-      if(person != "" && person != " "){
-        messageBuilder.id = person;
-      }
-
-      console.log(messageBuilder)
-
-      socket.emit("userSearch", messageBuilder)
-    }
-
     var modalState = 0;
     
     function toggleModal(){
@@ -197,7 +99,6 @@
         modalState = 1;
       }
       
-      returned = []
       $("#rmTable").remove()
       $("#results").html("")
     }
@@ -218,31 +119,6 @@
 
     socket.on('error', (msg) => {
       alert(msg)
-    });
-
-    socket.on('returnSearch', (msg) => {
-      console.log(msg)
-
-      if(modalState == 0){
-        toggleModal();
-        $("#rmTable").remove()
-
-        $("#modal-title").html("Search Results")
-
-        $("#results").append(`<tr id="rmTable">
-                <th style="border-width:0.5px;">ID</th>
-                <th style="border-width:0.5px;">Name</th>
-                <th style="border-width:0.5px;">Infection Status</th>
-                <th style="border-width:0.5px;">Admin</th>
-              </tr>`)
-      }
-
-      $("#results").append(`<tr style="border-width:0.5px;">
-    <td style="border-width:0.5px;">${msg.id}</td>
-    <td style="border-width:0.5px;">${msg.name}</td>
-    <td style="border-width:0.5px;">${msg.infectionStatus}</td>
-    <td style="border-width:0.5px;">${msg.isAdmin}</td>
-  </tr>`)
     });
 
     socket.on('returnRange', (msg) => {

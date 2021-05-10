@@ -43,8 +43,6 @@ function getOverlap(dateStart, dateEnd, place, person) {
     if (rows) {
 
       rows.forEach((row) => {
-        console.log("Infection:")
-        console.log(row);
         if (row.id != person) {
           io.emit("returnInfected", row);
         }
@@ -60,7 +58,6 @@ function getOverlap(dateStart, dateEnd, place, person) {
 var exclusiveList = [];
 
 function getWithin(dateStart, dateEnd, person) {
-  console.log("within")
   exclusiveList = [];
 
   var sql = `SELECT * FROM Event WHERE person = ? AND (dateIn >= ? OR dateOut >= ?)`;
@@ -86,7 +83,6 @@ function getWithin(dateStart, dateEnd, person) {
     }
 
     exclusiveList.forEach((item) => {
-      console.log("item")
       getOverlap(item.dateIn, item.dateOut, item.place, item.person)
     });
 
@@ -109,11 +105,6 @@ app.get('/logo.png', (req, res) => {
   res.sendFile(__dirname + '/views/logo.png');
 });
 
-app.get('/db', (req, res) => {
-  res.sendFile(__dirname + '/checkin.db');
-  console.log("sent")
-});
-
 http.listen(3000, () => {
   console.log('listening on *:3000');
 });
@@ -122,8 +113,6 @@ io.on('connection', async (socket) => {
 
   socket.on('getRange', (msg) => {
     var sql = `SELECT * FROM Event WHERE (dateIn BETWEEN ? AND ?) OR (dateOut BETWEEN ? AND ?)`
-    console.log(msg.dateStart)
-    console.log(msg.dateEnd)
     db.all(sql, [msg.dateStart, msg.dateEnd, msg.dateStart, msg.dateEnd], (err, rows) => {
       if (err) {
         return errorHandler("Error getting date range.", "Something went wrong while searching for events in that time range.")
@@ -196,7 +185,6 @@ io.on('connection', async (socket) => {
           }
 
           rows.forEach((row) => {
-            console.log(row)
             latestTime = row.dateOut;
             eventId = row.id;
 
@@ -231,8 +219,6 @@ io.on('connection', async (socket) => {
           }
           rows.forEach((row) => {
             latestId = row.id;
-
-            console.log(row.dateOut)
 
             if (row.place != placeId) {
               return errorHandler("Received place did not match place found in lastEvent row", `This user has not been checked out of their previous location yet.`)
@@ -276,7 +262,6 @@ io.on('connection', async (socket) => {
       }
       rows.forEach((row) => {
         found = row;
-        console.log(row);
       });
 
       if (found == undefined) {
@@ -290,8 +275,6 @@ io.on('connection', async (socket) => {
     }
 
     var first = 0;
-
-    console.log(msg)
 
     var segment = "";
 
@@ -405,7 +388,6 @@ io.on('connection', async (socket) => {
       if (rows) {
         rows.forEach((row) => {
           found = row;
-          console.log(row);
           socket.emit("returnSearch", row)
         });
 
