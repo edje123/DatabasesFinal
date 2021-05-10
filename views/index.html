@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <!-- Include Tailwind -->
+    <link href="https://unpkg.com/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta name="theme-color" content="#000000" />
+
+    <style>
+        .borderSmall {
+            border-width: 0.1px;
+        }
+
+        .wheatonBlue{
+          color:#0A75BB;
+        }
+
+        .wheatonBlueBorder{
+          border-color:#0A75BB;
+        }
+
+        .wheatonBlueBack{
+          background-color:#a2dafa;
+        }
+    </style>
+    <title>Contracer</title>
+</head>
+
+<!-- Include Socket.io -->
+<script src="/socket.io/socket.io.js">
+
+</script>
+
+<!-- Include Jquery -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous">
+
+</script>
+
+<script>
+    var socket = io();
+
+    var returned = [];
+
+    function portData(){
+      var person = $("#person-id-search").val();
+      var name = $("#person-name-search").val();
+      var isAdmin = $("#isAdmin-search option:selected").val();
+      var infection = $("#infection-search option:selected").val();
+
+      $("#person-id-update").val($("#person-id-search").val())
+      $("#person-name").val($("#person-name-search").val())
+      $("#isAdmin").val($("#isAdmin-search option:selected").val())
+      $("#infection").val($("#infection-search option:selected").val())
+    }
+
+    function testEmit() {
+        console.log("testEmit")
+        socket.emit('testEmit', 'testEmit');
+    }
+
+    function sendEvent() {
+        var person = $("#person-id").val();
+        var building = $("#building").val();
+        var place = $("#place").val();
+
+        var type = $("#checkinout option:selected").val();
+
+        console.log({
+            id: person,
+            place: place,
+            building: building,
+            type: type
+        })
+
+        socket.emit("event", {
+            id: person,
+            place: place,
+            building: building,
+            type: type
+        })
+    }
+
+    function updateUser() {
+        var person = $("#person-id-update").val();
+        var name = $("#person-name").val();
+        var isAdmin = $("#isAdmin option:selected").val();
+        var infection = $("#infection option:selected").val();
+
+
+        console.log({
+            id: person,
+            name: name,
+            isAdmin: isAdmin,
+            infectionStatus: infection
+        })
+
+        if(name == "" && isAdmin == "-1" && infection == "-1"){
+          alert("You did not change any information.")
+        }
+        else{
+          socket.emit("userUpdate", {
+            id: person,
+            name: name,
+            isAdmin: isAdmin,
+            infectionStatus: infection
+          })
+        }
+        
+    }
+
+    function searchUsers(){
+      var person = $("#person-id-search").val();
+      var name = $("#person-name-search").val();
+      var isAdmin = $("#isAdmin-search option:selected").val();
+      var infection = $("#infection-search option:selected").val();
+
+      var messageBuilder = {};
+
+      if(isAdmin != -1){
+        messageBuilder.isAdmin = isAdmin;
+      }
+      
+      if(infection != -1){
+        messageBuilder.infectionStatus = infection;
+      }
+
+      if(name != "" && name != " "){
+        messageBuilder.name = name;
+      }
+
+      if(person != "" && person != " "){
+        messageBuilder.id = person;
+      }
+
+      console.log(messageBuilder)
+
+      socket.emit("userSearch", messageBuilder)
+    }
+
+    function addUser(){
+      var name = $("#person-name-add").val()
+      var infected = $("#infection-add option:selected").val();
+      var isAdmin = $("#isAdmin-add option:selected").val();
+
+      console.log(`${name} ${infected} ${isAdmin}`)
+      socket.emit("addUser", {name: name, infectionStatus: infected, isAdmin: isAdmin})
+    }
+
+    function removeUser(){
+      var id = $("#id-remove").val()
+      socket.emit("removeUser", id);
+    }
+
+    var modalState = 0;
+    
+    function toggleModal(){
+      
+      if(modalState == 1){
+        $("#modalBack").removeClass("ease-out");
+        $("#modalBack").removeClass("duration-300")
+
+        $("#modalBack").addClass("ease-in");
+        $("#modalBack").addClass("duration-200")
+
+        $("#modalBack").css({ opacity: 0 });
+
+        //Panel
+
+        $("#modalPanel").removeClass("translate-y-4");
+        $("#modalPanel").removeClass("sm:translate-y-0")
+        $("#modalPanel").removeClass("sm:scale-95")
+
+        $("#modalPanel").addClass("translate-y-0")
+        $("#modalPanel").addClass("sm:scale-100")
+
+        $("#modalPanel").css({ opacity: 0 });
+
+        
+
+        setTimeout(function(){ $("#fullModal").hide();$("#results").html(""); }, 100);
+
+        modalState = 0;
+        
+      }
+      else{
+        $("#fullModal").show();
+
+        $("#modalBack").removeClass("ease-in");
+        $("#modalBack").removeClass("duration-200")
+
+        $("#modalBack").addClass("ease-out");
+        $("#modalBack").addClass("duration-300")
+
+        $("#modalBack").css({ opacity: 0.75 });
+
+        //Panel
+
+        $("#modalPanel").removeClass("translate-y-0")
+        $("#modalPanel").removeClass("sm:scale-100")
+
+        $("#modalPanel").addClass("translate-y-4");
+        $("#modalPanel").addClass("sm:translate-y-0")
+        $("#modalPanel").addClass("sm:scale-95")
+
+        $("#modalPanel").css({ opacity: 1 });
+
+        
+
+        modalState = 1;
+      }
+      
+      returned = []
+      $("#rmTable").remove()
+      $("#results").html("")
+    }
+
+    var notifState = 0;
+
+    function toggleNotif(){
+
+      //Notification panel, dynamically insert this into the live region when it needs to be displayed
+
+      // Entering: "transform ease-out duration-300 transition"
+      //   From: "translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+      //   To: "translate-y-0 opacity-100 sm:translate-x-0"
+      // Leaving: "transition ease-in duration-100"
+      //   From: "opacity-100"
+      //   To: "opacity-0"
+      
+      if(notifState == 1){
+        $("#notifPanel").removeClass("ease-out");
+        $("#notifPanel").removeClass("duration-300")
+        $("#notifPanel").removeClass("transform")
+
+        $("#notifPanel").addClass("ease-in");
+        $("#notifPanel").addClass("duration-100")
+
+        $("#notifPanel").css({ opacity: 0 });
+
+        notifState = 0;
+        
+      }
+      else{
+        $("#notifPanel").css({ opacity: 1 });
+
+        $("#notifPanel").addClass("ease-out");
+        $("#notifPanel").addClass("duration-300")
+        $("#notifPanel").addClass("transform")
+
+        $("#notifPanel").removeClass("ease-in");
+        $("#notifPanel").removeClass("duration-100")
+
+        setTimeout(function(){if(notifState == 1){toggleNotif()}}, 3000);
+
+        notifState = 1;
+      }
+    }
+
+    socket.on('error', (msg) => {
+      alert(msg)
+    });
+
+    socket.on('notification', (msg) => {
+      $("#notifTitle").html(msg)
+      toggleNotif()
+    });
+
+    socket.on('returnSearch', (msg) => {
+      console.log(msg)
+
+      // $("#person-id-search").val(msg.id);
+      // $("#person-name-search").val(msg.name);
+      // $("#infection-search option:selected").val(msg.infectionStatus);
+
+      // if(msg.infectionStatus == "Infected"){
+      //   $("#infection-search option[value='Infected']").prop('selected', true);
+      // }
+      // else{
+      //   $("#infection-search option[value='Not Infected']").prop('selected', true);
+      // }
+
+      // if(msg.isAdmin == 1){
+      //   //$("#isAdmin-search option:selected").val("1");
+      //   $("#isAdmin option[value='1']").prop('selected', true);
+      // }
+      // else{
+      //   //$("#isAdmin-search option:selected").val("0");
+      //   $("#isAdmin option[value='0']").prop('selected', true);
+      // }
+
+      
+      
+      if(modalState == 0){
+        toggleModal();
+        $("#rmTable").remove()
+
+        $("#modal-title").html("Search Results")
+
+        $("#results").append(`<tr id="rmTable">
+                <th style="border-width:0.5px;">ID</th>
+                <th style="border-width:0.5px;">Name</th>
+                <th style="border-width:0.5px;">Infection Status</th>
+                <th style="border-width:0.5px;">Admin</th>
+              </tr>`)
+      }
+
+      $("#results").append(`<tr style="border-width:0.5px;">
+    <td style="border-width:0.5px;">${msg.id}</td>
+    <td style="border-width:0.5px;">${msg.name}</td>
+    <td style="border-width:0.5px;">${msg.infectionStatus}</td>
+    <td style="border-width:0.5px;">${msg.isAdmin}</td>
+  </tr>`)
+    });
+
+    socket.on('returnInfected', (msg) => {
+
+      
+      console.log(msg.date)
+      console.log(new Date(parseInt(msg.date)))
+
+      if(modalState == 0){
+        toggleModal();
+
+        $("#rmTable").remove()
+
+        $("#modal-title").html("Exposed Individuals")
+
+        $("#results").append(`<tr id="rmTable">
+                <th style="border-width:0.5px;">ID</th>
+                <th style="border-width:0.5px;">Name</th>
+                <th style="border-width:0.5px;">Place</th>
+                <th style="border-width:0.5px;">Building</th>
+                <th style="border-width:0.5px;">Date</th>
+              </tr>`)
+      }
+
+      if(!returned.includes(msg.id)){
+        returned.push(msg.id)
+        //$("#results").html($("#results").html() + ` ${msg.id} | ${msg.name} | ${msg.place} in ${msg.building}`)
+        //$("#results").html($("#results").html() + "<br>");
+
+        
+
+        $("#results").append(`<tr style="border-width:0.5px;">
+    <td style="border-width:0.5px;">${msg.id}</td>
+    <td style="border-width:0.5px;">${msg.name}</td>
+    <td style="border-width:0.5px;">${msg.place}</td>
+    <td style="border-width:0.5px;">${msg.building}</td>
+    <td style="border-width:0.5px;">${new Date(parseInt(msg.date))}</td>
+  </tr>`)
+      }
+      
+    });
+</script>
+
+<nav class="bg-white shadow">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <div class="flex">
+        <div class="flex-shrink-0 flex items-center">
+          <img class="block lg:hidden h-12 w-auto" src="/logo.png" alt="Wheaton College">
+          <img class="hidden lg:block h-12 w-auto" src="/logo.png" alt="Wheaton College">
+        </div>
+        <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+          <a href="#" class="wheatonBlueBorder wheatonBlue text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+            Contracer
+          </a>
+        </div>
+        <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+          <a href="/metrics" class="wheatonBlue text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+            Metrics
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+
+<body>
+
+
+    <!-- MODAL -->
+
+<div id="fullModal" class="fixed z-10 inset-0 overflow-y-auto" style="display: none;" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+
+    <div id="modalBack" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+    <div id="modalPanel" class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
+      <div>
+        <div class="mt-3 sm:mt-5">
+          <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+          </h3>
+          <div class="mt-2">
+            <table id="results" class="table-auto w-full" style="border-width: 0.5px;">
+              
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="mt-5 sm:mt-6">
+        <button type="button" onclick="toggleModal()" class="inline-flex justify-center w-full rounded-md border border-transparent shadow-xl-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
+          Okay
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- END MODAL -->
+
+    <!-- NOTIFICATION -->
+
+<div aria-live="assertive" class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start">
+  <div id="notifPanel" class="w-full flex flex-col items-center space-y-4 sm:items-end" style="opacity:0">
+    <div class="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden">
+      <div class="p-4">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <svg class="h-6 w-6 text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="ml-3 w-0 flex-1 pt-0.5">
+            <p id="notifTitle" class="text-sm font-medium text-gray-900">
+              Event saved
+            </p>
+            <p id="notifContent" class="mt-1 text-sm text-gray-500">
+              The server received the update successfully.
+            </p>
+          </div>
+          <div class="ml-4 flex-shrink-0 flex">
+            <button class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              <span class="sr-only">Close</span>
+              <svg  onclick="toggleNotif()" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    <!-- END NOTIFICATION -->
+
+    <div class="mt-8 max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-white shadow-xl sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Checking in/out
+                </h3>
+                <div class="mt-2 max-w-xl text-sm text-gray-500">
+                    <p>
+                        Log someone's entrance or exit from a space.
+                    </p>
+                </div>
+                <form class="mt-5 sm:flex sm:items-center">
+                    <div>
+                        <fieldset>
+                            <div class="mt-1 bg-white rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="person-id" class="sr-only">Person's ID</label>
+                                    <input type="text" name="person-id" id="person-id" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Person's ID">
+                                </div>
+                                <div class="flex -space-x-px">
+                                    <div class="w-1/2 flex-1 min-w-0">
+                                        <label for="place" class="sr-only">Place</label>
+                                        <input type="text" name="place" id="place" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-bl-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Place">
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <label for="building" class="sr-only">Building</label>
+                                        <input type="text" name="building" id="building" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-br-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Building">
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset class="mt-6 bg-white">
+                            <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="checkin/out" class="sr-only">Checkin/out</label>
+                                    <select id="checkinout" name="checkinout" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="check_in">Check In</option>
+                                        <option value="check_out">Check Out</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </form>
+                <button type="button" onclick="sendEvent()" class="inline-flex items-center px-2.5 py-1.5 mt-4 border border-transparent text-xs font-medium rounded wheatonBlue wheatonBlueBack hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Submit
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+    
+    <div class="mt-4 max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-white shadow-xl sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Search
+                </h3>
+                <div class="mt-2 max-w-xl text-sm text-gray-500">
+                    <p>
+                        Search for a specific person.
+                    </p>
+                </div>
+                <form class="mt-5 flex sm:items-center">
+                    <div>
+                        <fieldset class="flex-grow">
+                            <div class="mt-1 bg-white rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="person-id-search" class="sr-only">Person's ID</label>
+                                    <input type="text" name="person-id-search" id="person-id-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall flex-grow" placeholder="Person's ID">
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-md shadow-xl-sm -space-y-px flex">
+                                <div class="flex -space-x-px">
+                                    <div class="w-full flex-grow min-w-0">
+                                        <label for="person-name-search" class="sr-only">Person's Name</label>
+                                        <input type="text" name="person-name-search" id="person-name-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Person's Name">
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset class="mt-6 bg-white">
+                            <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="infection-search" class="sr-only">Infection</label>
+                                    <select id="infection-search" name="infection-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="-1">Select One</option>
+                                        <option value="Not Infected">Not Infected</option>
+                                        <option value="Infected">Infected</option>
+                                    </select>
+                                    <label for="isAdmin-search" class="sr-only">isAdmin</label>
+                                    <select id="isAdmin-search" name="isAdmin-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="-1">Select One</option>
+                                        <option value="0">Not an Admin</option>
+                                        <option value="1">Is an Admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </form>
+                <button type="button" onclick="searchUsers()" class="inline-flex items-center px-2.5 py-1.5 mt-4 border border-transparent text-xs font-medium rounded wheatonBlue wheatonBlueBack hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Submit
+                </button>
+                <button type="button" onclick="portData()" class="inline-flex items-center px-2.5 py-1.5 mt-4 border border-transparent text-xs font-medium rounded wheatonBlue wheatonBlueBack hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Fill Data
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="max-w-7xl mt-4 mx-auto sm:px-6 lg:px-8 mb-4">
+        <div class="bg-white shadow-xl sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Update User
+                </h3>
+                <div class="mt-2 max-w-xl text-sm text-gray-500">
+                    <p>
+                        Change a user's profile data.
+                    </p>
+                </div>
+                <form class="mt-5 flex sm:items-center">
+                    <div>
+                        <fieldset class="flex-grow">
+                            <div class="mt-1 bg-white rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="person-id-update" class="sr-only">Person's ID</label>
+                                    <input type="text" name="person-id-update" id="person-id-update" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall flex-grow" placeholder="Person's ID">
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-md shadow-xl-sm -space-y-px flex">
+                                <div class="flex -space-x-px">
+                                    <div class="w-full flex-grow min-w-0">
+                                        <label for="person-name" class="sr-only">Person's Name</label>
+                                        <input type="text" name="person-name" id="person-name" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Person's Name">
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset class="mt-6 bg-white">
+                            <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="infection" class="sr-only">Infection</label>
+                                    <select id="infection" name="infection" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="-1">Select One</option>
+                                        <option value="Not Infected">Not Infected</option>
+                                        <option value="Infected">Infected</option>
+                                    </select>
+                                    <label for="isAdmin" class="sr-only">isAdmin</label>
+                                    <select id="isAdmin" name="isAdmin" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="-1">Select One</option>
+                                        <option value="0">Not an Admin</option>
+                                        <option value="1">Is an Admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </form>
+                <button type="button" onclick="updateUser()" class="inline-flex items-center px-2.5 py-1.5 mt-4 border border-transparent text-xs font-medium rounded wheatonBlue wheatonBlueBack hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Submit
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+        <div class="max-w-7xl mt-4 mx-auto sm:px-6 lg:px-8 mb-4">
+        <div class="bg-white shadow-xl sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Add a User
+                </h3>
+                <div class="mt-2 max-w-xl text-sm text-gray-500">
+                    <p>
+                        Add a user to the system.
+                    </p>
+                </div>
+                <form class="mt-5 flex sm:items-center">
+                    <div>
+                        <fieldset class="flex-grow">
+                            <div class="bg-white rounded-md shadow-xl-sm -space-y-px flex">
+                                <div class="flex -space-x-px">
+                                    <div class="w-full flex-grow min-w-0">
+                                        <label for="person-name-add" class="sr-only">Person's Name</label>
+                                        <input type="text" name="person-name-add" id="person-name-add" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Person's Name">
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <fieldset class="mt-6 bg-white">
+                            <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
+                                <div>
+                                    <label for="infection-add" class="sr-only">Infection</label>
+                                    <select id="infection-add" name="infection-add" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="Not Infected">Not Infected</option>
+                                        <option value="Infected">Infected</option>
+                                    </select>
+                                    <label for="isAdmin-add" class="sr-only">isAdmin</label>
+                                    <select id="isAdmin-add" name="isAdmin-add" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                        <option value="0">Not an Admin</option>
+                                        <option value="1">Is an Admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </form>
+                <button type="button" onclick="addUser()" class="inline-flex items-center px-2.5 py-1.5 mt-4 border border-transparent text-xs font-medium rounded wheatonBlue wheatonBlueBack hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Submit
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+            <div class="max-w-7xl mt-4 mx-auto sm:px-6 lg:px-8 mb-4">
+        <div class="bg-white shadow-xl sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">
+                    Remove a User
+                </h3>
+                <div class="mt-2 max-w-xl text-sm text-gray-500">
+                    <p>
+                        Remove a user from the system.
+                    </p>
+                </div>
+                <form class="mt-5 flex sm:items-center">
+                    <div>
+                        <fieldset class="flex-grow">
+                            <div class="bg-white rounded-md shadow-xl-sm -space-y-px flex">
+                                <div class="flex -space-x-px">
+                                    <div class="w-full flex-grow min-w-0">
+                                        <label for="id-remove" class="sr-only">Person's ID</label>
+                                        <input type="text" name="id-remove" id="id-remove" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Person's ID">
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </form>
+                <button type="button" onclick="removeUser()" class="inline-flex items-center px-2.5 py-1.5 mt-4 border border-transparent text-xs font-medium rounded wheatonBlue wheatonBlueBack hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Submit
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
