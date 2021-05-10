@@ -135,7 +135,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('addUser', (msg) => {
-    db.run(`INSERT INTO Person(isAdmin, name, infectionStatus, id) VALUES(?, ?, ?, ?)`, [msg.isAdmin, msg.name, msg.infectionStatus, msg.id], function(error) {
+    db.run(`INSERT INTO Person(name, infectionStatus) VALUES(?, ?)`, [msg.name, "Not Infected"], function(error) {
       if (error) {
         return errorHandler(error, "Something went wrong while adding that user to the system.");
       }
@@ -145,6 +145,18 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('removeUser', (msg) => {
+    db.run(`DELETE FROM Event WHERE person = ?`, [msg], function(error) {
+      if (error) {
+        return errorHandler(error, "Something went wrong while removing that user from the system.");
+      }
+    });
+
+    db.run(`DELETE FROM Infection WHERE person = ?`, [msg], function(error) {
+      if (error) {
+        return errorHandler(error, "Something went wrong while removing that user from the system.");
+      }
+    });
+
     db.run(`DELETE FROM Person WHERE id = ?`, [msg], function(error) {
       if (error) {
         return errorHandler(error, "Something went wrong while removing that user from the system.");
@@ -182,13 +194,13 @@ io.on('connection', async (socket) => {
           if (err) {
             return errorHandler("Error occurred searching for the person's last event", "Something went wrong while registering an event for that person.")
           }
+
           rows.forEach((row) => {
+            console.log(row)
             latestTime = row.dateOut;
             eventId = row.id;
 
-            console.log(row.dateOut)
-
-            if (row.dateOut == null) {
+            if (row.dateOut == null && row.id != null) {
               return errorHandler("Person not checked out of previous location.", `This user has not been checked out of their previous location yet.`)
             }
             else {
@@ -295,16 +307,6 @@ io.on('connection', async (socket) => {
       params.push(msg.name)
     }
 
-    if (msg.isAdmin != "-1" && first == 0) {
-      segment = segment + `isAdmin = ?`
-      first++;
-      params.push(msg.isAdmin)
-    }
-    else if (msg.isAdmin != "-1" && first == 1) {
-      segment = segment + `, isAdmin = ?`
-      params.push(msg.isAdmin)
-    }
-
     if (msg.infectionStatus != "-1" && first == 0) {
       segment = segment + `infectionStatus = ?`
       first++;
@@ -315,7 +317,7 @@ io.on('connection', async (socket) => {
       params.push(msg.infectionStatus)
     }
 
-    if (msg.name = "" && msg.isAdmin == "-1" && msg.infectionStatus == "-1") {
+    if (msg.name = "" && msg.infectionStatus == "-1") {
       return errorHandler("All values in update request were blank", "You did not change any information.")
     }
 
@@ -386,15 +388,6 @@ io.on('connection', async (socket) => {
       first++
       sql = sql + `infectionStatus = ?`
       params.push(msg.infectionStatus)
-    }
-
-    if (msg.isAdmin && first == 1) {
-      sql = sql + `AND isAdmin = ?`
-      params.push(msg.isAdmin)
-    } else if (msg.isAdmin) {
-      first++
-      sql = sql + `isAdmin = ?`
-      params.push(msg.isAdmin)
     }
 
 

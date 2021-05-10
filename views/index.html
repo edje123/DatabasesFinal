@@ -48,12 +48,10 @@
     function portData(){
       var person = $("#person-id-search").val();
       var name = $("#person-name-search").val();
-      var isAdmin = $("#isAdmin-search option:selected").val();
       var infection = $("#infection-search option:selected").val();
 
       $("#person-id-update").val($("#person-id-search").val())
       $("#person-name").val($("#person-name-search").val())
-      $("#isAdmin").val($("#isAdmin-search option:selected").val())
       $("#infection").val($("#infection-search option:selected").val())
     }
 
@@ -87,25 +85,22 @@
     function updateUser() {
         var person = $("#person-id-update").val();
         var name = $("#person-name").val();
-        var isAdmin = $("#isAdmin option:selected").val();
         var infection = $("#infection option:selected").val();
 
 
         console.log({
             id: person,
             name: name,
-            isAdmin: isAdmin,
             infectionStatus: infection
         })
 
-        if(name == "" && isAdmin == "-1" && infection == "-1"){
+        if(name == "" && infection == "-1"){
           alert("You did not change any information.")
         }
         else{
           socket.emit("userUpdate", {
             id: person,
             name: name,
-            isAdmin: isAdmin,
             infectionStatus: infection
           })
         }
@@ -115,14 +110,9 @@
     function searchUsers(){
       var person = $("#person-id-search").val();
       var name = $("#person-name-search").val();
-      var isAdmin = $("#isAdmin-search option:selected").val();
       var infection = $("#infection-search option:selected").val();
 
       var messageBuilder = {};
-
-      if(isAdmin != -1){
-        messageBuilder.isAdmin = isAdmin;
-      }
       
       if(infection != -1){
         messageBuilder.infectionStatus = infection;
@@ -143,11 +133,8 @@
 
     function addUser(){
       var name = $("#person-name-add").val()
-      var infected = $("#infection-add option:selected").val();
-      var isAdmin = $("#isAdmin-add option:selected").val();
 
-      console.log(`${name} ${infected} ${isAdmin}`)
-      socket.emit("addUser", {name: name, infectionStatus: infected, isAdmin: isAdmin})
+      socket.emit("addUser", {name: name})
     }
 
     function removeUser(){
@@ -274,7 +261,6 @@
                 <th style="border-width:0.5px;">ID</th>
                 <th style="border-width:0.5px;">Name</th>
                 <th style="border-width:0.5px;">Infection Status</th>
-                <th style="border-width:0.5px;">Admin</th>
               </tr>`)
       }
 
@@ -282,7 +268,6 @@
     <td style="border-width:0.5px;">${msg.id}</td>
     <td style="border-width:0.5px;">${msg.name}</td>
     <td style="border-width:0.5px;">${msg.infectionStatus}</td>
-    <td style="border-width:0.5px;">${msg.isAdmin}</td>
   </tr>`)
     });
 
@@ -507,16 +492,10 @@
                             <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
                                 <div>
                                     <label for="infection-search" class="sr-only">Infection</label>
-                                    <select id="infection-search" name="infection-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                    <select id="infection-search" name="infection-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
                                         <option value="-1">Select One</option>
                                         <option value="Not Infected">Not Infected</option>
                                         <option value="Infected">Infected</option>
-                                    </select>
-                                    <label for="isAdmin-search" class="sr-only">isAdmin</label>
-                                    <select id="isAdmin-search" name="isAdmin-search" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
-                                        <option value="-1">Select One</option>
-                                        <option value="0">Not an Admin</option>
-                                        <option value="1">Is an Admin</option>
                                     </select>
                                 </div>
                             </div>
@@ -568,16 +547,10 @@
                             <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
                                 <div>
                                     <label for="infection" class="sr-only">Infection</label>
-                                    <select id="infection" name="infection" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
+                                    <select id="infection" name="infection" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
                                         <option value="-1">Select One</option>
                                         <option value="Not Infected">Not Infected</option>
                                         <option value="Infected">Infected</option>
-                                    </select>
-                                    <label for="isAdmin" class="sr-only">isAdmin</label>
-                                    <select id="isAdmin" name="isAdmin" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
-                                        <option value="-1">Select One</option>
-                                        <option value="0">Not an Admin</option>
-                                        <option value="1">Is an Admin</option>
                                     </select>
                                 </div>
                             </div>
@@ -613,22 +586,6 @@
                                         <label for="person-name-add" class="sr-only">Person's Name</label>
                                         <input type="text" name="person-name-add" id="person-name-add" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall" placeholder="Person's Name">
                                     </div>
-                                </div>
-                            </div>
-                        </fieldset>
-                        <fieldset class="mt-6 bg-white">
-                            <div class="mt-1 rounded-md shadow-xl-sm -space-y-px">
-                                <div>
-                                    <label for="infection-add" class="sr-only">Infection</label>
-                                    <select id="infection-add" name="infection-add" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-t-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
-                                        <option value="Not Infected">Not Infected</option>
-                                        <option value="Infected">Infected</option>
-                                    </select>
-                                    <label for="isAdmin-add" class="sr-only">isAdmin</label>
-                                    <select id="isAdmin-add" name="isAdmin-add" class="p-1 focus:ring-blue-500 focus:border-blue-500 relative block w-full rounded-none rounded-b-md bg-transparent focus:z-10 sm:text-sm border-gray-300 borderSmall">
-                                        <option value="0">Not an Admin</option>
-                                        <option value="1">Is an Admin</option>
-                                    </select>
                                 </div>
                             </div>
                         </fieldset>
