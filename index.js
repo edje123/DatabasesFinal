@@ -12,29 +12,6 @@ function errorHandler(error, msg) {
 
 function getOverlap(dateStart, dateEnd, place, person) {
 
-  //   var sql = `
-  // SELECT person AS id, Person.name AS name, Place.name AS place, Building.name AS building
-  // FROM Event
-  // INNER JOIN Person ON Person.id = Event.person 
-  // INNER JOIN Building ON Building.id = Event.building
-  // INNER JOIN Place ON Place.id = Event.place
-  // WHERE place = ${place}
-  // AND ((dateOut >= ${dateStart} <= ${dateEnd})
-  // OR (dateIn >= ${dateStart} <= ${dateEnd}))`;
-
-  //   var sql = `
-  // SELECT DISTINCT person AS id, Person.name AS name, 
-  // Place.name AS place, Building.name AS building,
-  // Event.dateIn AS date
-  // FROM Event
-  // INNER JOIN Person ON Person.id = Event.person 
-  // INNER JOIN Building ON Building.id = Event.building
-  // INNER JOIN Place ON Place.id = Event.place
-  // WHERE place = ${place}
-  // AND ((dateOut BETWEEN ${dateStart} AND ${dateEnd})
-  // OR (dateIn BETWEEN ${dateStart} AND ${dateEnd}) 
-  // OR ((dateIn <= ${dateStart}) AND (dateOut >= ${dateEnd})))`;
-
   var sql = `
   SELECT DISTINCT person AS id, Person.name AS name, 
   Place.name AS place, Building.name AS building,
@@ -69,17 +46,11 @@ function getOverlap(dateStart, dateEnd, place, person) {
         console.log("Infection:")
         console.log(row);
         if (row.id != person) {
-          //returned.push(row)
           io.emit("returnInfected", row);
         }
 
       });
 
-      // var returnedUnique = [...new Set(returned)];
-
-      // returnedUnique.forEach((item) => {
-      //     io.emit("returnInfected", item);
-      // })
     } else {
       errorHandler("No information provided.", "You must provide information to search for.")
     }
@@ -126,8 +97,6 @@ function getWithin(dateStart, dateEnd, person) {
 
 }
 
-
-
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
@@ -151,26 +120,10 @@ http.listen(3000, () => {
 
 io.on('connection', async (socket) => {
 
-  socket.on('testEmit', (msg) => {
-    db.run(`INSERT INTO Person(isAdmin, name, infectionStatus, id) VALUES('0','John Smith', 'Not Infected', '999')`, function(error) {
-      if (error) {
-        return errorHandler(error, "Data failed to insert.");
-      } else {
-        console.log("Inserted test data without error.");
-      }
-    });
-
-    db.run(`DELETE FROM Person WHERE id = '999'`, function(error) {
-      if (error) {
-        return errorHandler(error, "Data failed to delete.");
-      } else {
-        console.log("Deleted test data without error.");
-      }
-    });
-  });
-
   socket.on('getRange', (msg) => {
     var sql = `SELECT * FROM Event WHERE (dateIn BETWEEN ? AND ?) OR (dateOut BETWEEN ? AND ?)`
+    console.log(msg.dateStart)
+    console.log(msg.dateEnd)
     db.all(sql, [msg.dateStart, msg.dateEnd, msg.dateStart, msg.dateEnd], (err, rows) => {
       if (err) {
         return errorHandler("Error getting date range.", "Something went wrong while searching for events in that time range.")
@@ -474,7 +427,16 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('getInfections', (msg) => {
-
+    var sql = "SELECT *, (SELECT COUNT() FROM Infection WHERE date BETWEEN ? AND ?) as numInfections FROM Infection WHERE date BETWEEN ? AND ?"
+    db.all(sql, [msg.dateStart, msg.dateEnd, msg.dateStart, msg.dateEnd], (err, rows) => {
+      if (err) {
+        if (err) {
+          return errorHandler(err, "An error occurred while trying to find infections inside that time range.");
+        }
+      }
+      rows.forEach((row) => {
+        socket.emit("returnInfections", row)
+      });
+    });
   });
-
 });
